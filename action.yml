@@ -1,0 +1,28 @@
+name: "Halo App Store Release"
+description: "Sync release to Halo App Store"
+author: "ryanwang"
+inputs:
+  github-token:
+    description: "GitHub Token"
+    required: true
+  app-id:
+    description: "App id from Halo"
+    required: true
+  assets-dir:
+    description: "Assets directory"
+    required: true
+  release-id:
+    description: "Current release id"
+    required: true
+  halo-username:
+    description: "Halo username"
+    required: true
+  halo-password:
+    description: "Halo password"
+    required: true
+outputs:
+  status:
+    description: "Status"
+runs:
+  using: "node16"
+  main: "dist/index.js"
