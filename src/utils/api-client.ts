@@ -5,7 +5,7 @@ const username = githubCore.getInput("halo-username");
 const password = githubCore.getInput("halo-password");
 
 const apiClient = axios.create({
-  baseURL: "https://halo.run",
+  baseURL: "https://www.halo.run",
   withCredentials: true,
   auth: {
     username: username,
