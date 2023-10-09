@@ -33,8 +33,15 @@ const run = async () => {
     release_id: Number(releaseId),
   });
 
+  const releaseBody = `
+  ${release.data.body || ""}
+
+  ${release.data.body ? "---" : ""}
+
+  *Generate from [${release.data.tag_name}](${release.data.html_url})*`;
+
   const markdown = await octokit.rest.markdown.render({
-    text: release.data.body || "",
+    text: releaseBody,
     mode: "gfm",
     context: `${owner}/${repo}`,
   });
@@ -75,7 +82,7 @@ const run = async () => {
           name: "",
         },
         rawType: "MARKDOWN",
-        raw: release.data.body,
+        raw: releaseBody,
       },
       makeLatest: true,
     }
