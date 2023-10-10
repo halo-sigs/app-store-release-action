@@ -34,14 +34,14 @@ const run = async () => {
   });
 
   let releaseBody = `
-  ${release.data.body || ""}`;
+${release.data.body || ""}`;
 
   if (!app.spec.openSource.closed) {
     releaseBody += `
   
-    ${release.data.body ? "---" : ""}
+${release.data.body ? "---" : ""}
   
-    *Generate from [${release.data.tag_name}](${release.data.html_url})*`;
+*Generate from [${release.data.tag_name}](${release.data.html_url})*`;
   }
 
   const markdown = await octokit.rest.markdown.render({
