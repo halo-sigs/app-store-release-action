@@ -27,11 +27,15 @@ const run = async () => {
     repo: { owner, repo },
   } = github.context;
 
+  githubCore.info("Getting release info");
+
   const release = await octokit.rest.repos.getRelease({
     owner,
     repo,
     release_id: Number(releaseId),
   });
+
+  githubCore.info("Getting release info done");
 
   let releaseBody = `
 ${release.data.body || ""}`;
@@ -44,18 +48,28 @@ ${release.data.body ? "---" : ""}
 *Generate from [${release.data.tag_name}](${release.data.html_url})*`;
   }
 
+  githubCore.info("Rendering markdown");
+
   const markdown = await octokit.rest.markdown.render({
     text: releaseBody,
     mode: "gfm",
     context: `${owner}/${repo}`,
   });
 
+  githubCore.info("Rendering markdown done");
+
+  githubCore.info("Reading app manifest file");
+
   const appConfigFile = await fs.readFile(
     app.spec.type === "PLUGIN" ? `src/main/resources/plugin.yaml` : `theme.yaml`,
     { encoding: "utf-8" }
   );
 
+  githubCore.info("Reading app manifest file done");
+
   const appConfig = YAML.parse(appConfigFile.toString());
+
+  githubCore.info("Creating a release");
 
   const { data: appRelease } = await apiClient.post(
     `/apis/api.console.halo.run/v1alpha1/applications/${app.metadata.name}/releases`,
@@ -92,6 +106,8 @@ ${release.data.body ? "---" : ""}
     }
   );
 
+  githubCore.info("Creating a release done");
+
   const assets = await fs.readdir(assetsDir);
 
   assets.forEach(async (asset) => {
@@ -116,6 +132,7 @@ run()
     githubCore.info(`✅ [DONE]: Release created`);
   })
   .catch((error) => {
-    githubCore.error("❌ [ERROR]: Release to Halo app store failed", error);
+    githubCore.error("❌ [ERROR]: Release to Halo app store failed" + error.message);
+    console.error(error)
     process.exit(1);
   });
