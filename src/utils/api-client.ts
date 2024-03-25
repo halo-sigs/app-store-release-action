@@ -3,9 +3,10 @@ import * as githubCore from "@actions/core";
 
 const username = githubCore.getInput("halo-username");
 const password = githubCore.getInput("halo-password");
+const baseURL = githubCore.getInput("halo-backend-baseurl");
 
 const apiClient = axios.create({
-  baseURL: "https://www.halo.run",
+  baseURL,
   withCredentials: true,
   auth: {
     username: username,

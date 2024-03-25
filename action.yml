@@ -20,6 +20,10 @@ inputs:
   halo-password:
     description: "Halo password"
     required: true
+  halo-backend-baseurl:
+    description: "Halo app server backend base url"
+    required: false
+    default: "https://www.halo.run"
 outputs:
   status:
     description: "Status"
