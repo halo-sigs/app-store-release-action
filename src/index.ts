@@ -132,7 +132,5 @@ run()
     githubCore.info(`✅ [DONE]: Release created`);
   })
   .catch((error) => {
-    githubCore.error("❌ [ERROR]: Release to Halo app store failed" + error.message);
-    console.error(error)
-    process.exit(1);
+    githubCore.setFailed(error.message)
   });
