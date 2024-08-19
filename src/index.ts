@@ -3,6 +3,7 @@ import fs from "fs/promises";
 import * as github from "@actions/github";
 import * as githubCore from "@actions/core";
 import YAML from "yaml";
+import { toFormData } from "axios";
 
 const token = githubCore.getInput("github-token");
 const octokit = github.getOctokit(token);
@@ -11,7 +12,7 @@ const assetsDir = githubCore.getInput("assets-dir");
 const releaseId = githubCore.getInput("release-id");
 
 const run = async () => {
-  const { data: app } = await apiClient.get(`/apis/api.console.halo.run/v1alpha1/applications/${appId}`);
+  const { data: app } = await apiClient.get(`/apis/uc.api.developer.store.halo.run/v1alpha1/applications/${appId}`);
 
   if (!app) {
     githubCore.error("App not found");
@@ -60,19 +61,19 @@ ${release.data.body ? "---" : ""}
 
   githubCore.info("Reading app manifest file");
 
-  const appConfigFile = await fs.readFile(
+  const appManifestFile = await fs.readFile(
     app.spec.type === "PLUGIN" ? `src/main/resources/plugin.yaml` : `theme.yaml`,
     { encoding: "utf-8" }
   );
 
   githubCore.info("Reading app manifest file done");
 
-  const appConfig = YAML.parse(appConfigFile.toString());
+  const appManifest = YAML.parse(appManifestFile.toString());
 
   githubCore.info("Creating a release");
 
   const { data: appRelease } = await apiClient.post(
-    `/apis/api.console.halo.run/v1alpha1/applications/${app.metadata.name}/releases`,
+    `/apis/uc.api.developer.store.halo.run/v1alpha1/releases?applicationName=${appId}`,
     {
       release: {
         apiVersion: "store.halo.run/v1alpha1",
@@ -82,11 +83,12 @@ ${release.data.body ? "---" : ""}
           name: "",
         },
         spec: {
+          applicationName: "",
           displayName: release.data.name,
           draft: false,
           ownerName: "",
-          preRelease: false,
-          requires: appConfig.spec.requires,
+          preRelease: release.data.prerelease,
+          requires: appManifest.spec.requires,
           version: release.data.tag_name.replace("v", ""),
           notesName: "",
         },
@@ -111,16 +113,17 @@ ${release.data.body ? "---" : ""}
   const assets = await fs.readdir(assetsDir);
 
   assets.forEach(async (asset) => {
+    const formData = toFormData({
+      releaseName: appRelease.metadata.name,
+      file: await fs.readFile(`${assetsDir}/${asset}`),
+    });
+
     await apiClient
-      .post(
-        `/apis/api.console.halo.run/v1alpha1/applications/${app.metadata.name}/releases/${appRelease.metadata.name}/upload-asset?filename=${asset}`,
-        await fs.readFile(`${assetsDir}/${asset}`),
-        {
-          headers: {
-            "Content-Type": "application/octet-stream",
-          },
-        }
-      )
+      .post(`/apis/uc.api.developer.store.halo.run/v1alpha1/assets`, formData, {
+        headers: {
+          "Content-Type": "application/octet-stream",
+        },
+      })
       .catch((error) => {
         githubCore.error("❌ [ERROR]: Upload asset failed", error);
       });
@@ -132,5 +135,5 @@ run()
     githubCore.info(`✅ [DONE]: Release created`);
   })
   .catch((error) => {
-    githubCore.setFailed(error.message)
+    githubCore.setFailed(error.message);
   });

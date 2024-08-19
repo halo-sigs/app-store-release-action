@@ -6,7 +6,7 @@ inputs:
     description: "GitHub Token"
     required: true
   app-id:
-    description: "App id from Halo"
+    description: "App id from Halo app store"
     required: true
   assets-dir:
     description: "Assets directory"
@@ -14,19 +14,16 @@ inputs:
   release-id:
     description: "Current release id"
     required: true
-  halo-username:
-    description: "Halo username"
-    required: true
-  halo-password:
-    description: "Halo password"
-    required: true
   halo-backend-baseurl:
-    description: "Halo app server backend base url"
+    description: "Base url of Halo app store"
     required: false
     default: "https://www.halo.run"
+  halo-pat:
+    description: "Personal access token of Halo app store"
+    required: true
 outputs:
   status:
     description: "Status"
 runs:
-  using: "node16"
+  using: "node20"
   main: "dist/index.js"

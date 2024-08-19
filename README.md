@@ -2,33 +2,30 @@
 
 这是一个可以自动发布版本到 Halo 应用市场的 GitHub Action。
 
-> ⚠️ 由于目前 Halo 的应用市场暂不支持三方开发者发布应用，所以此 Action 暂时只能够提供给 [halo-dev](https://github.com/halo-dev) 和 [halo-sigs](https://github.com/halo-sigs) 组织使用。
-
 ## 使用方式
 
 ```yaml
-  app-store-release:
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name == 'release'
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: true
-      - name: Download plugin-foo jar
-        uses: actions/download-artifact@v2
-        with:
-          name: plugin-foo
-          path: build/libs
-      - name: Sync to Halo App Store
-        uses: halo-sigs/app-store-release-action@main
-        with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
-          app-id: ${{secrets.APP_ID}}
-          release-id: ${{ github.event.release.id }}
-          assets-dir: "build/libs"
-          halo-username: ${{ secrets.HALO_USERNAME }}
-          halo-password: ${{ secrets.HALO_PASSWORD }}
+app-store-release:
+  runs-on: ubuntu-latest
+  needs: build
+  if: github.event_name == 'release'
+  steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+    - name: Download plugin-foo jar
+      uses: actions/download-artifact@v2
+      with:
+        name: plugin-foo
+        path: build/libs
+    - name: Sync to Halo App Store
+      uses: halo-sigs/app-store-release-action@v3
+      with:
+        github-token: ${{secrets.GITHUB_TOKEN}}
+        app-id: ${{secrets.APP_ID}}
+        release-id: ${{ github.event.release.id }}
+        assets-dir: "build/libs"
+        halo-pat: ${{ secrets.HALO_PAT }}
 ```
 
 参数说明：
@@ -36,8 +33,7 @@
 - `app-id`：应用 ID，可以在 Halo 官网后台的应用管理中找到，必须先创建应用。
 - `release-id`：保持不变即可，用于或者当前 GitHub Release 的信息，以同步到 Halo 应用版本。
 - `assets-dir`：应用的构建产物目录，在创建版本的时候会将此目录的所有文件上传到应用版本的 Assets 中。
-- `halo-username`：Halo 官网后台的用户名。
-- `halo-password`：Halo 官网后台的密码。
+- `halo-pat`：Halo 官网的个人令牌（PAT），需要勾选 **版本管理** 权限。
 
 ## 使用示例
 
@@ -46,7 +42,7 @@ name: Build Plugin JAR File
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   release:
     types:
       - created
@@ -61,8 +57,8 @@ jobs:
       - name: Set up JDK 17
         uses: actions/setup-java@v2
         with:
-          distribution: 'temurin'
-          cache: 'gradle'
+          distribution: "temurin"
+          cache: "gradle"
           java-version: 17
       - name: Build with Gradle
         run: |
@@ -99,6 +95,5 @@ jobs:
           app-id: ${{secrets.APP_ID}}
           release-id: ${{ github.event.release.id }}
           assets-dir: "build/libs"
-          halo-username: ${{ secrets.HALO_USERNAME }}
-          halo-password: ${{ secrets.HALO_PASSWORD }}
+          halo-pat: ${{ secrets.HALO_PAT }}
 ```
