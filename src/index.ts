@@ -116,7 +116,7 @@ ${release.data.body ? "---" : ""}
     const formData = new FormData();
 
     formData.append("releaseName", appRelease.metadata.name);
-    formData.append("file", fs.readFileSync(`${assetsDir}/${asset}`));
+    formData.append("file", fs.createReadStream(`${assetsDir}/${asset}`));
 
     await apiClient.post(`/apis/uc.api.developer.store.halo.run/v1alpha1/assets`, formData, {
       headers: {
