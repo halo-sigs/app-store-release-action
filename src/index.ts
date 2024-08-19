@@ -1,7 +1,6 @@
 import * as githubCore from "@actions/core";
 import * as github from "@actions/github";
 import fs from "fs";
-import { serialize } from "object-to-formdata";
 import YAML from "yaml";
 import apiClient from "./utils/api-client";
 
@@ -113,14 +112,12 @@ ${release.data.body ? "---" : ""}
   const assets = fs.readdirSync(assetsDir);
 
   assets.forEach(async (asset) => {
-    const formData = serialize({
-      releaseName: appRelease.metadata.name,
-      file: fs.readFileSync(`${assetsDir}/${asset}`),
-    });
+    const formData = new FormData();
 
-    await apiClient.post(`/apis/uc.api.developer.store.halo.run/v1alpha1/assets`, formData).catch((error) => {
-      githubCore.error(`❌ [ERROR]: Failed to upload asset: ${asset}`, error);
-    });
+    formData.append("releaseName", appRelease.metadata.name);
+    formData.append("file", fs.readFileSync(`${assetsDir}/${asset}`) as any);
+
+    await apiClient.post(`/apis/uc.api.developer.store.halo.run/v1alpha1/assets`, formData);
   });
 };
 
