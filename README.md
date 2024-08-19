@@ -2,6 +2,8 @@
 
 这是一个可以自动发布版本到 Halo 应用市场的 GitHub Action。
 
+> 目前 Halo 应用市场的开发者入驻为内测阶段，详情可见：<https://www.halo.run/1724038689087>
+
 ## 使用方式
 
 ```yaml
