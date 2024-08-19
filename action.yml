@@ -6,7 +6,7 @@ inputs:
     description: "GitHub Token"
     required: true
   app-id:
-    description: "App id from Halo app store"
+    description: "App ID from Halo App Store"
     required: true
   assets-dir:
     description: "Assets directory"
@@ -15,11 +15,11 @@ inputs:
     description: "Current release id"
     required: true
   halo-backend-baseurl:
-    description: "Base url of Halo app store"
+    description: "Base url of Halo App Store"
     required: false
     default: "https://www.halo.run"
   halo-pat:
-    description: "Personal access token of Halo app store"
+    description: "Personal access token of Halo App Store"
     required: true
 outputs:
   status:
