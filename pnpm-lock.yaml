@@ -17,6 +17,9 @@ importers:
       axios:
         specifier: ^1.7.4
         version: 1.7.4
+      object-to-formdata:
+        specifier: ^4.5.1
+        version: 4.5.1
       octokit:
         specifier: ^2.1.0
         version: 2.1.0
@@ -1490,6 +1493,9 @@ packages:
   object-keys@1.1.1:
     resolution: {integrity: sha512-NuAESUOUMrlIXOfHKzD6bpPu3tYt3xvjNdRIQ+FeT0lNb4K8WR70CaDxhuNguS2XG+GjkyMwOzsN5ZktImfhLA==}
     engines: {node: '>= 0.4'}
+
+  object-to-formdata@4.5.1:
+    resolution: {integrity: sha512-QiM9D0NiU5jV6J6tjE1g7b4Z2tcUnKs1OPUi4iMb2zH+7jwlcUrASghgkFk9GtzqNNq8rTQJtT8AzjBAvLoNMw==}
 
   object.assign@4.1.4:
     resolution: {integrity: sha512-1mxKf0e58bvyjSCtKYY4sRe9itRk3PJpquJOjeIkz885CczcI4IvJJDLPS72oowuSh+pBxUFROpX+TU++hxhZQ==}
@@ -3665,6 +3671,8 @@ snapshots:
   object-inspect@1.12.3: {}
 
   object-keys@1.1.1: {}
+
+  object-to-formdata@4.5.1: {}
 
   object.assign@4.1.4:
     dependencies:

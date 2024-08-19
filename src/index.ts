@@ -1,9 +1,12 @@
-import apiClient from "./utils/api-client";
-import fs from "fs/promises";
-import * as github from "@actions/github";
 import * as githubCore from "@actions/core";
+import * as github from "@actions/github";
+import fs from "fs";
+import { serialize } from "object-to-formdata";
 import YAML from "yaml";
-import { toFormData } from "axios";
+import apiClient from "./utils/api-client";
+
+const PLUGIN_MANIFEST_PATH = "src/main/resources/plugin.yaml";
+const THEME_MANIFEST_PATH = "theme.yaml";
 
 const token = githubCore.getInput("github-token");
 const octokit = github.getOctokit(token);
@@ -12,15 +15,8 @@ const assetsDir = githubCore.getInput("assets-dir");
 const releaseId = githubCore.getInput("release-id");
 
 const run = async () => {
-  const { data: app } = await apiClient.get(`/apis/uc.api.developer.store.halo.run/v1alpha1/applications/${appId}`);
-
-  if (!app) {
-    githubCore.error("App not found");
-    return;
-  }
-
   if (!releaseId) {
-    githubCore.error("Release id not found");
+    githubCore.error("Release ID not found");
     return;
   }
 
@@ -28,7 +24,7 @@ const run = async () => {
     repo: { owner, repo },
   } = github.context;
 
-  githubCore.info("Getting release info");
+  githubCore.info("Getting release information");
 
   const release = await octokit.rest.repos.getRelease({
     owner,
@@ -36,18 +32,17 @@ const run = async () => {
     release_id: Number(releaseId),
   });
 
-  githubCore.info("Getting release info done");
+  githubCore.info("Release information retrieved");
 
-  let releaseBody = `
-${release.data.body || ""}`;
+  const releaseBody = `
+${release.data.body || ""}
 
-  if (!app.spec.openSource.closed) {
-    releaseBody += `
-  
+
 ${release.data.body ? "---" : ""}
-  
-*Generate from [${release.data.tag_name}](${release.data.html_url})*`;
-  }
+
+
+*Generated from [${release.data.tag_name}](${release.data.html_url})*
+`;
 
   githubCore.info("Rendering markdown");
 
@@ -57,16 +52,21 @@ ${release.data.body ? "---" : ""}
     context: `${owner}/${repo}`,
   });
 
-  githubCore.info("Rendering markdown done");
+  githubCore.info("Markdown rendering completed");
 
   githubCore.info("Reading app manifest file");
 
-  const appManifestFile = await fs.readFile(
-    app.spec.type === "PLUGIN" ? `src/main/resources/plugin.yaml` : `theme.yaml`,
-    { encoding: "utf-8" }
-  );
+  let appManifestFile;
 
-  githubCore.info("Reading app manifest file done");
+  if (fs.existsSync(PLUGIN_MANIFEST_PATH)) {
+    appManifestFile = fs.readFileSync(PLUGIN_MANIFEST_PATH, { encoding: "utf-8" });
+  } else if (fs.existsSync(THEME_MANIFEST_PATH)) {
+    appManifestFile = fs.readFileSync(THEME_MANIFEST_PATH, { encoding: "utf-8" });
+  } else {
+    throw new Error("No manifest file found");
+  }
+
+  githubCore.info("App manifest file read successfully");
 
   const appManifest = YAML.parse(appManifestFile.toString());
 
@@ -108,31 +108,25 @@ ${release.data.body ? "---" : ""}
     }
   );
 
-  githubCore.info("Creating a release done");
+  githubCore.info("Release created successfully");
 
-  const assets = await fs.readdir(assetsDir);
+  const assets = fs.readdirSync(assetsDir);
 
   assets.forEach(async (asset) => {
-    const formData = toFormData({
+    const formData = serialize({
       releaseName: appRelease.metadata.name,
-      file: await fs.readFile(`${assetsDir}/${asset}`),
+      file: fs.readFileSync(`${assetsDir}/${asset}`),
     });
 
-    await apiClient
-      .post(`/apis/uc.api.developer.store.halo.run/v1alpha1/assets`, formData, {
-        headers: {
-          "Content-Type": "application/octet-stream",
-        },
-      })
-      .catch((error) => {
-        githubCore.error("❌ [ERROR]: Upload asset failed", error);
-      });
+    await apiClient.post(`/apis/uc.api.developer.store.halo.run/v1alpha1/assets`, formData).catch((error) => {
+      githubCore.error(`❌ [ERROR]: Failed to upload asset: ${asset}`, error);
+    });
   });
 };
 
 run()
   .then(() => {
-    githubCore.info(`✅ [DONE]: Release created`);
+    githubCore.info(`✅ [DONE]: Release created successfully`);
   })
   .catch((error) => {
     githubCore.setFailed(error.message);
