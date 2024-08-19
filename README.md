@@ -91,7 +91,7 @@ jobs:
           name: plugin-starter
           path: build/libs
       - name: Sync to Halo App Store
-        uses: halo-sigs/halo-store-release-action@main
+        uses: halo-sigs/halo-store-release-action@v3
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
           app-id: ${{secrets.APP_ID}}
