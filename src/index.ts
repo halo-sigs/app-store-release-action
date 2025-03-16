@@ -86,7 +86,7 @@ async function getReleaseNote(
     repo: { owner, repo },
   } = github.context;
 
-  let releaseBody = `\n${releaseInfo.data.body || ""}`;
+  let releaseBody = `${releaseInfo.data.body || ""}`;
 
   if (releaseBody) {
     releaseBody += "\n---";
