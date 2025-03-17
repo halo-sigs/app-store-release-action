@@ -89,11 +89,11 @@ async function getReleaseNote(
   let releaseBody = `${releaseInfo.data.body || ""}`;
 
   if (releaseBody) {
-    releaseBody += "\n---";
+    releaseBody += "\n\n---";
   }
 
   if (!repoInfo.data.private) {
-    releaseBody += `\n*Generated from [${releaseInfo.data.tag_name}](${releaseInfo.data.html_url})*`;
+    releaseBody += `\n\n*Generated from [${releaseInfo.data.tag_name}](${releaseInfo.data.html_url})*`;
   }
 
   const html = await octokit.rest.markdown.render({
