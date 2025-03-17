@@ -1,5 +1,5 @@
-import axios from "axios";
 import * as githubCore from "@actions/core";
+import axios from "axios";
 
 const baseURL = githubCore.getInput("halo-backend-baseurl");
 const pat = githubCore.getInput("halo-pat");
