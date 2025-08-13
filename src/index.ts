@@ -88,7 +88,7 @@ async function getReleaseNote(
 
   let releaseBody = `${releaseInfo.data.body || ""}`;
 
-  if (releaseBody) {
+  if (releaseBody && !repoInfo.data.private) {
     releaseBody += "\n\n---";
   }
 
