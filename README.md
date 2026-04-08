@@ -53,15 +53,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v6
         with:
           submodules: true
-      - name: Set up JDK 17
-        uses: actions/setup-java@v2
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
         with:
           distribution: "temurin"
           cache: "gradle"
-          java-version: 17
+          java-version: 21
       - name: Build with Gradle
         run: |
           # Set the version with tag name when releasing
@@ -70,7 +70,7 @@ jobs:
           sed -i "s/version=.*-SNAPSHOT$/version=$version/1" gradle.properties
           ./gradlew clean build -x test
       - name: Archive plugin-starter jar
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v6
         with:
           name: plugin-starter
           path: |
@@ -82,16 +82,16 @@ jobs:
     needs: build
     if: github.event_name == 'release'
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v6
         with:
           submodules: true
       - name: Download plugin-starter jar
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v8
         with:
           name: plugin-starter
           path: build/libs
       - name: Sync to Halo App Store
-        uses: halo-sigs/app-store-release-action@v3
+        uses: halo-sigs/app-store-release-action@v4
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
           app-id: ${{secrets.APP_ID}}
