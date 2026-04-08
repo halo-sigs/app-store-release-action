@@ -12,16 +12,16 @@ app-store-release:
   needs: build
   if: github.event_name == 'release'
   steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v6
       with:
         submodules: true
     - name: Download plugin-foo jar
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v8
       with:
         name: plugin-foo
         path: build/libs
     - name: Sync to Halo App Store
-      uses: halo-sigs/app-store-release-action@v3
+      uses: halo-sigs/app-store-release-action@v4
       with:
         github-token: ${{secrets.GITHUB_TOKEN}}
         app-id: ${{secrets.APP_ID}}
