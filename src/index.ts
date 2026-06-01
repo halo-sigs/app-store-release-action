@@ -1,9 +1,9 @@
+import fs from "node:fs";
+import path from "node:path";
 import * as githubCore from "@actions/core";
 import * as github from "@actions/github";
 import AdmZip from "adm-zip";
 import FormData from "form-data";
-import fs from "node:fs";
-import path from "node:path";
 import YAML from "yaml";
 import apiClient from "./utils/api-client";
 
@@ -12,11 +12,55 @@ interface CommonManifest {
   version: string;
 }
 
+interface AppRelease {
+  apiVersion: string;
+  kind: string;
+  metadata: {
+    annotations?: Record<string, string>;
+    finalizers?: string[] | null;
+    generateName?: string;
+    labels?: Record<string, string>;
+    name: string;
+    version?: number | null;
+  };
+  spec?: {
+    applicationName: string;
+    displayName: string;
+    draft: boolean;
+    ownerName?: string;
+    preRelease: boolean;
+    requires: string;
+    version: string;
+    notesName?: string;
+  };
+  status?: {
+    published?: boolean;
+    publishTimestamp?: string | null;
+  } | null;
+}
+
+interface AppReleaseRequest {
+  release: AppRelease;
+  notes: {
+    apiVersion: string;
+    html: string;
+    kind: string;
+    metadata: {
+      generateName?: string;
+      name: string;
+    };
+    rawType: "MARKDOWN";
+    raw: string;
+  };
+  makeLatest: boolean;
+}
+
 const token = githubCore.getInput("github-token");
 const octokit = github.getOctokit(token);
 const appId = githubCore.getInput("app-id");
 const assetsDir = githubCore.getInput("assets-dir");
 const releaseId = githubCore.getInput("release-id");
+const publishMaxAttempts = 5;
 
 const run = async () => {
   if (!releaseId) {
@@ -40,10 +84,12 @@ const run = async () => {
     releaseInfo,
     html,
     markdown,
-    appManifest
+    appManifest,
   );
 
   await uploadAssets(appRelease.metadata.name, assets);
+
+  await publishAppRelease(appRelease, html, markdown);
 };
 
 run()
@@ -80,7 +126,7 @@ async function getGitHubRepoInfo(owner: string, repo: string) {
 
 async function getReleaseNote(
   repoInfo: Awaited<ReturnType<typeof getGitHubRepoInfo>>,
-  releaseInfo: Awaited<ReturnType<typeof getGitHubReleaseInfo>>
+  releaseInfo: Awaited<ReturnType<typeof getGitHubReleaseInfo>>,
 ): Promise<{ html: string; markdown: string }> {
   const {
     repo: { owner, repo },
@@ -136,7 +182,7 @@ function readAppManifest(assets: string[]): CommonManifest | undefined {
       throw new Error(
         `${
           isPlugin ? "Plugin" : "Theme"
-        } package does not contain ${yamlFileName} file`
+        } package does not contain ${yamlFileName} file`,
       );
     }
 
@@ -157,52 +203,149 @@ async function createAppRelease(
   release: Awaited<ReturnType<typeof getGitHubReleaseInfo>>,
   html: string,
   markdown: string,
-  appManifest?: CommonManifest
+  appManifest?: CommonManifest,
 ) {
-  githubCore.info("Create app release");
+  githubCore.info("Create draft app release");
 
   if (!appManifest) {
     throw new Error("App manifest not found");
   }
 
-  const { data: appRelease } = await apiClient.post(
-    `/apis/uc.api.developer.store.halo.run/v1alpha1/releases?applicationName=${appId}`,
-    {
-      release: {
-        apiVersion: "store.halo.run/v1alpha1",
-        kind: "Release",
-        metadata: {
-          generateName: "app-release-",
-          name: "",
-        },
-        spec: {
-          applicationName: "",
-          displayName: release.data.name,
-          draft: false,
-          ownerName: "",
-          preRelease: release.data.prerelease,
-          requires: appManifest.requires,
-          version: appManifest.version,
-          notesName: "",
-        },
+  const releaseRequest: AppReleaseRequest = {
+    release: {
+      apiVersion: "store.halo.run/v1alpha1",
+      kind: "Release",
+      metadata: {
+        generateName: "app-release-",
+        name: "",
       },
-      notes: {
-        apiVersion: "store.halo.run/v1alpha1",
-        html,
-        kind: "Content",
-        metadata: {
-          generateName: "app-release-notes-",
-          name: "",
-        },
-        rawType: "MARKDOWN",
-        raw: markdown,
+      spec: {
+        applicationName: "",
+        displayName: release.data.name || release.data.tag_name,
+        draft: true,
+        ownerName: "",
+        preRelease: release.data.prerelease,
+        requires: appManifest.requires,
+        version: appManifest.version,
+        notesName: "",
       },
-      makeLatest: true,
-    }
+    },
+    notes: {
+      apiVersion: "store.halo.run/v1alpha1",
+      html,
+      kind: "Content",
+      metadata: {
+        generateName: "app-release-notes-",
+        name: "",
+      },
+      rawType: "MARKDOWN",
+      raw: markdown,
+    },
+    makeLatest: true,
+  };
+
+  const { data: appRelease } = await apiClient.post<AppRelease>(
+    `/apis/uc.api.developer.store.halo.run/v1alpha1/releases?${new URLSearchParams(
+      { applicationName: appId },
+    ).toString()}`,
+    releaseRequest,
   );
 
-  githubCore.info("Successfully created app release");
+  if (!appRelease.metadata.name) {
+    throw new Error("Created app release name not found");
+  }
+
+  githubCore.info("Successfully created draft app release");
   return appRelease;
+}
+
+async function publishAppRelease(
+  appRelease: AppRelease,
+  html: string,
+  markdown: string,
+) {
+  githubCore.info("Publish app release");
+
+  let releaseToPublish = appRelease;
+
+  for (let attempt = 1; attempt <= publishMaxAttempts; attempt++) {
+    try {
+      await putPublishedAppRelease(releaseToPublish, html, markdown);
+      githubCore.info("Successfully published app release");
+      return;
+    } catch (error) {
+      if (!isConflictError(error) || attempt === publishMaxAttempts) {
+        throw error;
+      }
+
+      const delayMs = 1000 * attempt;
+      githubCore.warning(
+        `Publish app release conflicted, retrying in ${delayMs}ms (${attempt}/${publishMaxAttempts})`,
+      );
+      await delay(delayMs);
+      releaseToPublish = await getAppRelease(appRelease.metadata.name);
+    }
+  }
+}
+
+async function putPublishedAppRelease(
+  appRelease: AppRelease,
+  html: string,
+  markdown: string,
+) {
+  if (!appRelease.spec?.notesName) {
+    throw new Error("App release notes name not found");
+  }
+  const releaseRequest: AppReleaseRequest = {
+    release: {
+      ...appRelease,
+      spec: {
+        ...appRelease.spec,
+        draft: false,
+      },
+    },
+    notes: {
+      apiVersion: "store.halo.run/v1alpha1",
+      html,
+      kind: "Content",
+      metadata: {
+        name: appRelease.spec.notesName,
+      },
+      rawType: "MARKDOWN",
+      raw: markdown,
+    },
+    makeLatest: true,
+  };
+
+  await apiClient.put(
+    `/apis/uc.api.developer.store.halo.run/v1alpha1/releases/${encodeURIComponent(
+      appRelease.metadata.name,
+    )}`,
+    releaseRequest,
+  );
+}
+
+async function getAppRelease(releaseName: string) {
+  const { data: appRelease } = await apiClient.get<AppRelease>(
+    `/apis/uc.api.developer.store.halo.run/v1alpha1/releases/${encodeURIComponent(
+      releaseName,
+    )}`,
+  );
+
+  return appRelease;
+}
+
+function isConflictError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "response" in error &&
+    (error as { response?: { status?: number } }).response?.status === 409
+  );
+}
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function getAssets() {
@@ -232,16 +375,14 @@ async function uploadAssets(releaseName: string, assets: string[]) {
 
     const formData = new FormData();
     formData.append("releaseName", releaseName);
-    formData.append("file", fs.createReadStream(assetPath));
+    formData.append("file", fs.createReadStream(assetPath), asset);
 
     await apiClient.post(
       "/apis/uc.api.developer.store.halo.run/v1alpha1/assets",
       formData,
       {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      }
+        headers: formData.getHeaders(),
+      },
     );
 
     githubCore.info(`Successfully uploaded file: ${asset}`);
